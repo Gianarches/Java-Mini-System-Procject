@@ -1,0 +1,194 @@
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.ArrayList;
+
+public class SimpleStudentSystemClickable extends JFrame {
+
+    ArrayList<String> names = new ArrayList<>();
+    ArrayList<String> sections = new ArrayList<>();
+    ArrayList<Integer> present = new    ArrayList<>();
+    ArrayList<Integer> late = new ArrayList<>();
+    ArrayList<Integer> absent = new ArrayList<>();
+    ArrayList<Double> grades = new ArrayList<>();
+
+    JTable table;
+    DefaultTableModel model;
+
+    JTextField nameField, sectionField, gradeField;
+
+    public SimpleStudentSystemClickable() {
+
+        setTitle("Student Attendance and Grade System");
+        setSize(950, 420);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        model = new DefaultTableModel(new String[]{
+            "Name", "Section", "Present", "Late", "Absent", "Attendance %", "Grade"
+        }, 0);
+
+        table = new JTable(model);
+        JScrollPane pane = new JScrollPane(table);
+
+        // CLICK EVENT
+        table.addMouseListener(new MouseAdapter(){
+            public void mouseClicked(MouseEvent e){
+                int row = table.getSelectedRow();
+                nameField.setText(model.getValueAt(row, 0).toString());
+                sectionField.setText(model.getValueAt(row, 1).toString());
+            }
+        });
+
+        JPanel p = new JPanel(new GridLayout(2,5,5,5));
+
+        nameField = new JTextField();
+        sectionField = new JTextField();
+        gradeField = new JTextField();
+
+        JButton addBtn = new JButton("Add Student");
+        JButton presentBtn = new JButton("Present");
+        JButton lateBtn = new JButton("Late");
+        JButton absentBtn = new JButton("Absent");
+        JButton gradeBtn = new JButton("Add Grade");
+
+        p.add(new JLabel("Name"));
+        p.add(nameField);
+        p.add(new JLabel("Section"));
+        p.add(sectionField);
+        p.add(new JLabel("Grade"));
+        p.add(gradeField);
+
+        p.add(addBtn);
+        p.add(presentBtn);
+        p.add(lateBtn);
+        p.add(absentBtn);
+        p.add(gradeBtn);
+
+        add(p, BorderLayout.NORTH);
+        add(pane, BorderLayout.CENTER);
+
+        addBtn.addActionListener(e -> addStudent());
+        presentBtn.addActionListener(e -> markAttendance(0));
+        lateBtn.addActionListener(e -> markAttendance(1));
+        absentBtn.addActionListener(e -> markAttendance(2));
+        gradeBtn.addActionListener(e -> addGrade());
+
+        setVisible(true);
+    }
+
+    // ✅ ADD STUDENT MANUALLY
+    void addStudent(){
+        String name = nameField.getText().trim();
+        String sec = sectionField.getText().trim();
+
+        if(name.isEmpty() || sec.isEmpty()){
+            JOptionPane.showMessageDialog(this,"Enter name and section");
+            return;
+        }
+
+        if(findStudent(name) != -1){
+            JOptionPane.showMessageDialog(this,
+                "Name already exists. Duplicate is not allowed.");
+            return;
+        }
+
+        names.add(name);
+        sections.add(sec);
+        present.add(0);
+        late.add(0);
+        absent.add(0);
+        grades.add(0.0);
+
+        nameField.setText("");
+        sectionField.setText("");
+
+        refresh();
+    }
+
+    // ✅ MARK ATTENDANCE (NO AUTO ADD, SECTION MUST MATCH)
+    void markAttendance(int type){
+        String name = nameField.getText().trim();
+        String sec = sectionField.getText().trim();
+
+        if(name.isEmpty() || sec.isEmpty()){
+            JOptionPane.showMessageDialog(this,"Type name and section first");
+            return;
+        }
+
+        int index = findStudent(name);
+
+        if(index == -1){
+            JOptionPane.showMessageDialog(this,
+                "Student not found. Add student first.",
+                "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if(!sections.get(index).equalsIgnoreCase(sec)){
+            JOptionPane.showMessageDialog(this,
+                "Wrong section for this name.",
+                "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if(type==0) present.set(index, present.get(index)+1);
+        if(type==1) late.set(index, late.get(index)+1);
+        if(type==2) absent.set(index, absent.get(index)+1);
+
+        refresh();
+    }
+
+    // ✅ ADD GRADE BY CLICKING STUDENT
+    void addGrade(){
+        int row = table.getSelectedRow();
+        if(row == -1){
+            JOptionPane.showMessageDialog(this,"Select student in table first");
+            return;
+        }
+
+        try {
+            double g = Double.parseDouble(gradeField.getText().trim());
+            grades.set(row,(grades.get(row)+g)/2);
+            gradeField.setText("");
+            refresh();
+        } catch(Exception e){
+            JOptionPane.showMessageDialog(this,"Invalid grade");
+        }
+    }
+
+    // ✅ FIND STUDENT BY NAME ONLY
+    int findStudent(String name){
+        for(int i=0;i<names.size();i++){
+            if(names.get(i).equalsIgnoreCase(name)){
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    // ✅ REFRESH TABLE
+    void refresh(){
+        model.setRowCount(0);
+
+        for(int i=0;i<names.size();i++){
+            int total = present.get(i)+late.get(i)+absent.get(i);
+            String rate = total==0? "0%" : (present.get(i)*100/total)+"%";
+
+            model.addRow(new Object[]{
+                names.get(i),
+                sections.get(i),
+                present.get(i),
+                late.get(i),
+                absent.get(i),
+                rate,
+                String.format("%.1f", grades.get(i))
+            });
+        }
+    }
+
+    public static void main(String[] args) {
+        new SimpleStudentSystemClickable();
+    }
+}
