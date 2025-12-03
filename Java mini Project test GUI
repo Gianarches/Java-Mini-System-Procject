@@ -1,194 +1,298 @@
+package javaapplication4;
+
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
 
-public class SimpleStudentSystemClickable extends JFrame {
+class Student {
+    String name;
+    String section;
+    int present, late, absent;
+    double totalScore;
+    int totalExams;
 
-    ArrayList<String> names = new ArrayList<>();
-    ArrayList<String> sections = new ArrayList<>();
-    ArrayList<Integer> present = new    ArrayList<>();
-    ArrayList<Integer> late = new ArrayList<>();
-    ArrayList<Integer> absent = new ArrayList<>();
-    ArrayList<Double> grades = new ArrayList<>();
+    Student(String name, String section) {
+        this.name = name;
+        this.section = section;
+        this.present = this.late = this.absent = 0;
+        this.totalScore = 0;
+        this.totalExams = 0;
+    }
 
-    JTable table;
-    DefaultTableModel model;
+    double getAttendanceRate() {
+        int total = present + late + absent;
+        if (total == 0) return 0;
+        return (present * 100.0) / total;
+    }
 
-    JTextField nameField, sectionField, gradeField;
+    double getAverageGrade() {
+        if (totalExams == 0) return 0;
+        return totalScore / totalExams;
+    }
 
-    public SimpleStudentSystemClickable() {
+    String getSummary() {
+        return "Name: " + name + " | Section: " + section +
+                " | Present: " +  present + " | Late: " + late + " | Absent: " + absent +
+                " | Attendance Rate: " + String.format("%.2f", getAttendanceRate()) + "%" +
+                " | Average Grade: " + String.format("%.2f", getAverageGrade()) + "";
+    }
+}
 
+public class StudentSystemGUI extends JFrame {
+
+    static ArrayList<Student> students = new ArrayList<>();
+
+    CardLayout cardLayout = new CardLayout();
+    JPanel mainPanel = new JPanel(cardLayout);
+
+    public StudentSystemGUI() {
         setTitle("Student Attendance and Grade System");
-        setSize(950, 420);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
-        setLayout(new BorderLayout());
+        setSize(500, 400);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
 
-        model = new DefaultTableModel(new String[]{
-            "Name", "Section", "Present", "Late", "Absent", "Attendance %", "Grade"
-        }, 0);
+        initLoginPanel();
+        initMenuPanel();
+        initAddStudentPanel();
+        initAttendancePanel();
+        initScorePanel();
+        initViewPanel();
 
-        table = new JTable(model);
-        JScrollPane pane = new JScrollPane(table);
-
-        // CLICK EVENT
-        table.addMouseListener(new MouseAdapter(){
-            public void mouseClicked(MouseEvent e){
-                int row = table.getSelectedRow();
-                nameField.setText(model.getValueAt(row, 0).toString());
-                sectionField.setText(model.getValueAt(row, 1).toString());
-            }
-        });
-
-        JPanel p = new JPanel(new GridLayout(2,5,5,5));
-
-        nameField = new JTextField();
-        sectionField = new JTextField();
-        gradeField = new JTextField();
-
-        JButton addBtn = new JButton("Add Student");
-        JButton presentBtn = new JButton("Present");
-        JButton lateBtn = new JButton("Late");
-        JButton absentBtn = new JButton("Absent");
-        JButton gradeBtn = new JButton("Add Grade");
-
-        p.add(new JLabel("Name"));
-        p.add(nameField);
-        p.add(new JLabel("Section"));
-        p.add(sectionField);
-        p.add(new JLabel("Grade"));
-        p.add(gradeField);
-
-        p.add(addBtn);
-        p.add(presentBtn);
-        p.add(lateBtn);
-        p.add(absentBtn);
-        p.add(gradeBtn);
-
-        add(p, BorderLayout.NORTH);
-        add(pane, BorderLayout.CENTER);
-
-        addBtn.addActionListener(e -> addStudent());
-        presentBtn.addActionListener(e -> markAttendance(0));
-        lateBtn.addActionListener(e -> markAttendance(1));
-        absentBtn.addActionListener(e -> markAttendance(2));
-        gradeBtn.addActionListener(e -> addGrade());
-
+        add(mainPanel);
+        cardLayout.show(mainPanel, "login");
         setVisible(true);
     }
 
-    // ✅ ADD STUDENT MANUALLY
-    void addStudent(){
-        String name = nameField.getText().trim();
-        String sec = sectionField.getText().trim();
+    // ===== LOGIN PANEL =====
+    void initLoginPanel() {
+        JPanel loginPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10,10,10,10);
 
-        if(name.isEmpty() || sec.isEmpty()){
-            JOptionPane.showMessageDialog(this,"Enter name and section");
-            return;
-        }
+        JLabel userLabel = new JLabel("Username:");
+        JLabel passLabel = new JLabel("Password:");
+        JTextField userField = new JTextField(15);
+        JPasswordField passField = new JPasswordField(15);
+        JButton loginButton = new JButton("Login");
 
-        if(findStudent(name) != -1){
-            JOptionPane.showMessageDialog(this,
-                "Name already exists. Duplicate is not allowed.");
-            return;
-        }
+        gbc.gridx = 0; gbc.gridy = 0;
+        loginPanel.add(userLabel, gbc);
+        gbc.gridx = 1;
+        loginPanel.add(userField, gbc);
 
-        names.add(name);
-        sections.add(sec);
-        present.add(0);
-        late.add(0);
-        absent.add(0);
-        grades.add(0.0);
+        gbc.gridx = 0; gbc.gridy = 1;
+        loginPanel.add(passLabel, gbc);
+        gbc.gridx = 1;
+        loginPanel.add(passField, gbc);
 
-        nameField.setText("");
-        sectionField.setText("");
+        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 2;
+        loginPanel.add(loginButton, gbc);
 
-        refresh();
-    }
-
-    // ✅ MARK ATTENDANCE (NO AUTO ADD, SECTION MUST MATCH)
-    void markAttendance(int type){
-        String name = nameField.getText().trim();
-        String sec = sectionField.getText().trim();
-
-        if(name.isEmpty() || sec.isEmpty()){
-            JOptionPane.showMessageDialog(this,"Type name and section first");
-            return;
-        }
-
-        int index = findStudent(name);
-
-        if(index == -1){
-            JOptionPane.showMessageDialog(this,
-                "Student not found. Add student first.",
-                "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        if(!sections.get(index).equalsIgnoreCase(sec)){
-            JOptionPane.showMessageDialog(this,
-                "Wrong section for this name.",
-                "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        if(type==0) present.set(index, present.get(index)+1);
-        if(type==1) late.set(index, late.get(index)+1);
-        if(type==2) absent.set(index, absent.get(index)+1);
-
-        refresh();
-    }
-
-    // ✅ ADD GRADE BY CLICKING STUDENT
-    void addGrade(){
-        int row = table.getSelectedRow();
-        if(row == -1){
-            JOptionPane.showMessageDialog(this,"Select student in table first");
-            return;
-        }
-
-        try {
-            double g = Double.parseDouble(gradeField.getText().trim());
-            grades.set(row,(grades.get(row)+g)/2);
-            gradeField.setText("");
-            refresh();
-        } catch(Exception e){
-            JOptionPane.showMessageDialog(this,"Invalid grade");
-        }
-    }
-
-    // ✅ FIND STUDENT BY NAME ONLY
-    int findStudent(String name){
-        for(int i=0;i<names.size();i++){
-            if(names.get(i).equalsIgnoreCase(name)){
-                return i;
+        loginButton.addActionListener(e -> {
+            String user = userField.getText().trim();
+            String pass = new String(passField.getPassword()).trim();
+            // Hardcoded login for simplicity
+            if(user.equals("admin") && pass.equals("1234")) {
+                JOptionPane.showMessageDialog(this, "Login successful!");
+                cardLayout.show(mainPanel, "menu");
+            } else {
+                JOptionPane.showMessageDialog(this, "Invalid username or password");
             }
-        }
-        return -1;
+        });
+
+        mainPanel.add(loginPanel, "login");
     }
 
-    // ✅ REFRESH TABLE
-    void refresh(){
-        model.setRowCount(0);
+    // ===== MAIN MENU PANEL =====
+    void initMenuPanel() {
+        JPanel menuPanel = new JPanel(new GridLayout(5,1,10,10));
+        JButton addBtn = new JButton("Add Student");
+        JButton attendBtn = new JButton("Record Attendance");
+        JButton scoreBtn = new JButton("Add Quiz/Exam Score");
+        JButton viewBtn = new JButton("View Student Summary");
+        JButton exitBtn = new JButton("Exit");
 
-        for(int i=0;i<names.size();i++){
-            int total = present.get(i)+late.get(i)+absent.get(i);
-            String rate = total==0? "0%" : (present.get(i)*100/total)+"%";
+        addBtn.addActionListener(e -> cardLayout.show(mainPanel, "addStudent"));
+        attendBtn.addActionListener(e -> cardLayout.show(mainPanel, "attendance"));
+        scoreBtn.addActionListener(e -> cardLayout.show(mainPanel, "score"));
+        viewBtn.addActionListener(e -> cardLayout.show(mainPanel, "view"));
+        exitBtn.addActionListener(e -> System.exit(0));
 
-            model.addRow(new Object[]{
-                names.get(i),
-                sections.get(i),
-                present.get(i),
-                late.get(i),
-                absent.get(i),
-                rate,
-                String.format("%.1f", grades.get(i))
-            });
-        }
+        menuPanel.add(addBtn);
+        menuPanel.add(attendBtn);
+        menuPanel.add(scoreBtn);
+        menuPanel.add(viewBtn);
+        menuPanel.add(exitBtn);
+
+        mainPanel.add(menuPanel, "menu");
+    }
+
+    // ===== ADD STUDENT PANEL =====
+    void initAddStudentPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5,5,5,5);
+
+        JLabel nameLabel = new JLabel("Name:");
+        JLabel secLabel = new JLabel("Section:");
+        JTextField nameField = new JTextField(15);
+        JTextField secField = new JTextField(5);
+        JButton addButton = new JButton("Add");
+        JButton backButton = new JButton("Back");
+
+        gbc.gridx = 0; gbc.gridy = 0; panel.add(nameLabel, gbc);
+        gbc.gridx = 1; panel.add(nameField, gbc);
+        gbc.gridx = 0; gbc.gridy = 1; panel.add(secLabel, gbc);
+        gbc.gridx = 1; panel.add(secField, gbc);
+        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 2;
+        panel.add(addButton, gbc);
+        gbc.gridy = 3; panel.add(backButton, gbc);
+
+        addButton.addActionListener(e -> {
+            String name = nameField.getText().trim();
+            String section = secField.getText().trim();
+            if(!name.matches("[a-zA-Z ]+")) {
+                JOptionPane.showMessageDialog(this, "Invalid name! Letters only.");
+                return;
+            }
+            if(!section.matches("[0-9]+")) {
+                JOptionPane.showMessageDialog(this, "Invalid section! Numbers only.");
+                return;
+            }
+            for(Student s : students) {
+                if(s.name.equalsIgnoreCase(name)) {
+                    JOptionPane.showMessageDialog(this, "Student already exists!");
+                    return;
+                }
+            }
+            students.add(new Student(name, section));
+            JOptionPane.showMessageDialog(this, "Student added successfully!");
+            nameField.setText(""); secField.setText("");
+        });
+
+        backButton.addActionListener(e -> cardLayout.show(mainPanel, "menu"));
+        mainPanel.add(panel, "addStudent");
+    }
+
+    // ===== ATTENDANCE PANEL =====
+    void initAttendancePanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5,5,5,5);
+
+        JLabel nameLabel = new JLabel("Student Name:");
+        JTextField nameField = new JTextField(15);
+        JButton presentBtn = new JButton("Present");
+        JButton lateBtn = new JButton("Late");
+        JButton absentBtn = new JButton("Absent");
+        JButton backButton = new JButton("Back");
+
+        gbc.gridx = 0; gbc.gridy = 0; panel.add(nameLabel, gbc);
+        gbc.gridx = 1; panel.add(nameField, gbc);
+        gbc.gridy = 1; panel.add(presentBtn, gbc);
+        gbc.gridx = 2; panel.add(lateBtn, gbc);
+        gbc.gridx = 3; panel.add(absentBtn, gbc);
+        gbc.gridx = 1; gbc.gridy = 2; panel.add(backButton, gbc);
+
+        ActionListener recordListener = e -> {
+            String name = nameField.getText().trim();
+            if(!name.matches("[a-zA-Z ]+")) {
+                JOptionPane.showMessageDialog(this, "Invalid name!");
+                return;
+            }
+            Student s = null;
+            for(Student st : students) if(st.name.equalsIgnoreCase(name)) s = st;
+            if(s == null) { JOptionPane.showMessageDialog(this, "Student not found!"); return; }
+
+            if(e.getSource() == presentBtn) s.present++;
+            else if(e.getSource() == lateBtn) s.late++;
+            else s.absent++;
+
+            JOptionPane.showMessageDialog(this, "Attendance recorded!");
+            nameField.setText("");
+        };
+
+        presentBtn.addActionListener(recordListener);
+        lateBtn.addActionListener(recordListener);
+        absentBtn.addActionListener(recordListener);
+        backButton.addActionListener(e -> cardLayout.show(mainPanel, "menu"));
+
+        mainPanel.add(panel, "attendance");
+    }
+
+    // ===== SCORE PANEL =====
+    void initScorePanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5,5,5,5);
+
+        JLabel nameLabel = new JLabel("Student Name:");
+        JLabel scoreLabel = new JLabel("Score:");
+        JTextField nameField = new JTextField(15);
+        JTextField scoreField = new JTextField(5);
+        JButton addBtn = new JButton("Add Score");
+        JButton backBtn = new JButton("Back");
+
+        gbc.gridx = 0; gbc.gridy = 0; panel.add(nameLabel, gbc);
+        gbc.gridx = 1; panel.add(nameField, gbc);
+        gbc.gridx = 0; gbc.gridy = 1; panel.add(scoreLabel, gbc);
+        gbc.gridx = 1; panel.add(scoreField, gbc);
+        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 2;
+        panel.add(addBtn, gbc);
+        gbc.gridy = 3; panel.add(backBtn, gbc);
+
+        addBtn.addActionListener(e -> {
+            String name = nameField.getText().trim();
+            String scoreText = scoreField.getText().trim();
+            if(!name.matches("[a-zA-Z ]+")) { JOptionPane.showMessageDialog(this, "Invalid name!"); return; }
+            Student s = null;
+            for(Student st : students) if(st.name.equalsIgnoreCase(name)) s = st;
+            if(s == null) { JOptionPane.showMessageDialog(this, "Student not found!"); return; }
+
+            double score;
+            try { score = Double.parseDouble(scoreText); }
+            catch(Exception ex) { JOptionPane.showMessageDialog(this, "Invalid score!"); return; }
+
+            if(score < 0 || score > 100) { JOptionPane.showMessageDialog(this, "Score must be 0-100!"); return; }
+            s.totalScore += score;
+            s.totalExams++;
+            JOptionPane.showMessageDialog(this, "Score recorded!");
+            nameField.setText(""); scoreField.setText("");
+        });
+
+        backBtn.addActionListener(e -> cardLayout.show(mainPanel, "menu"));
+        mainPanel.add(panel, "score");
+    }
+
+    // ===== VIEW STUDENT PANEL =====
+    void initViewPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        JTextArea textArea = new JTextArea();
+        textArea.setEditable(false);
+        JScrollPane scroll = new JScrollPane(textArea);
+        JButton refreshBtn = new JButton("Refresh");
+        JButton backBtn = new JButton("Back");
+
+        JPanel btnPanel = new JPanel();
+        btnPanel.add(refreshBtn);
+        btnPanel.add(backBtn);
+
+        refreshBtn.addActionListener(e -> {
+            StringBuilder sb = new StringBuilder();
+            for(Student s : students) sb.append(s.getSummary()).append("\n");
+            textArea.setText(sb.toString());
+        });
+
+        backBtn.addActionListener(e -> cardLayout.show(mainPanel, "menu"));
+
+        panel.add(scroll, BorderLayout.CENTER);
+        panel.add(btnPanel, BorderLayout.SOUTH);
+
+        mainPanel.add(panel, "view");
     }
 
     public static void main(String[] args) {
-        new SimpleStudentSystemClickable();
+        SwingUtilities.invokeLater(StudentSystemGUI::new);
     }
 }
