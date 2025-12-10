@@ -10,7 +10,6 @@ public class Student {
     private int late;
     private int absent;
 
-    // Store scores per subject
     private final Map<String, Double> totalScores = new HashMap<>();
     private final Map<String, Integer> totalExams = new HashMap<>();
 
@@ -41,21 +40,18 @@ public class Student {
         return (present * 100.0) / total;
     }
 
-    // Add score for a subject
     public void addScore(String subject, double score) {
         if (!totalScores.containsKey(subject)) return;
         totalScores.put(subject, totalScores.get(subject) + score);
         totalExams.put(subject, totalExams.get(subject) + 1);
     }
 
-    // Average grade for a subject
     public double getAverageGrade(String subject) {
         int exams = totalExams.getOrDefault(subject, 0);
         if (exams == 0) return 0;
         return totalScores.get(subject) / exams;
     }
 
-    // Overall average across all subjects
     public double getOverallAverage() {
         double sum = 0;
         int count = 0;
@@ -69,7 +65,10 @@ public class Student {
         return count == 0 ? 0 : sum / count;
     }
 
-    // Attendance methods
+    public double getSubjectAverage(String subject) {
+        return getAverageGrade(subject);
+    }
+
     public void markPresent() { present++; }
     public void markLate() { late++; }
     public void markAbsent() { absent++; }
