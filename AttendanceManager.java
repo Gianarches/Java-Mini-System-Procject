@@ -1,6 +1,6 @@
 package javaapplication1.Java;
 
- class AttendanceManager {
+class AttendanceManager {
     public static void record(Student s, int type) {
         switch(type) {
             case 1:
@@ -13,9 +13,7 @@ package javaapplication1.Java;
                 s.markAbsent();
                 break;
             default:
-                // Optional: handle invalid type
-                System.out.println("Invalid attendance type: " + type);
-                break;
+                System.out.println("Invalid attendance type");
         }
     }
 }
