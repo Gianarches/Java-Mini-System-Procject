@@ -26,17 +26,16 @@ public class MainGUI extends JFrame {
     private final JButton absentBtn = new JButton("Absent");
     private final JButton scoreBtn = new JButton("Add Score");
     private final JButton viewBtn = new JButton("View All Students");
+    private final JButton saveBtn = new JButton("Save Records");
     private final JButton exitBtn = new JButton("Exit");
 
     public MainGUI() {
-
         setTitle("Student Attendance & Grade System");
-        setSize(900, 500);
+        setSize(950, 500);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
 
-        // ===== TITLE =====
         JLabel title = new JLabel("STUDENT ATTENDANCE AND GRADE SYSTEM", JLabel.CENTER);
         title.setFont(new Font("Arial", Font.BOLD, 18));
         title.setOpaque(true);
@@ -45,34 +44,29 @@ public class MainGUI extends JFrame {
         title.setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
         add(title, BorderLayout.NORTH);
 
-        // ===== INPUT PANEL =====
         JPanel left = new JPanel(new GridLayout(8, 2, 10, 10));
         left.setBorder(BorderFactory.createEmptyBorder(20,20,20,10));
 
         left.add(new JLabel("Student Name:"));
         left.add(nameField);
-
         left.add(new JLabel("Section:"));
         left.add(sectionField);
-
         left.add(new JLabel("Subject:"));
         left.add(subjectBox);
-
         left.add(new JLabel("Score:"));
         left.add(scoreField);
-
         left.add(new JLabel("Attendance Rate:"));
         left.add(attendanceLabel);
-
         left.add(new JLabel("Average Grade:"));
         left.add(averageLabel);
 
         add(left, BorderLayout.WEST);
 
-        // ===== TABLE =====
         model = new DefaultTableModel(new String[]{
                 "Name", "Section", "Present", "Late", "Absent",
-                "Attendance %", "Overall Average"
+                "Attendance %",
+                "Math Avg", "Science Avg", "English Avg",
+                "Overall Average"
         }, 0);
 
         table = new JTable(model);
@@ -80,8 +74,7 @@ public class MainGUI extends JFrame {
         tablePane.setVisible(false);
         add(tablePane, BorderLayout.CENTER);
 
-        // ===== BUTTON PANEL =====
-        JPanel buttons = new JPanel(new GridLayout(2, 4, 10, 10));
+        JPanel buttons = new JPanel(new GridLayout(2, 5, 10, 10));
         buttons.setBorder(BorderFactory.createEmptyBorder(10,20,20,20));
 
         buttons.add(addBtn);
@@ -90,23 +83,22 @@ public class MainGUI extends JFrame {
         buttons.add(absentBtn);
         buttons.add(scoreBtn);
         buttons.add(viewBtn);
+        buttons.add(saveBtn);
         buttons.add(exitBtn);
 
         add(buttons, BorderLayout.SOUTH);
 
-        // ===== EVENTS =====
         addBtn.addActionListener(e -> addStudent());
         presentBtn.addActionListener(e -> recordAttendance(1));
         lateBtn.addActionListener(e -> recordAttendance(2));
         absentBtn.addActionListener(e -> recordAttendance(3));
         scoreBtn.addActionListener(e -> addScore());
         viewBtn.addActionListener(e -> toggleTable());
+        saveBtn.addActionListener(e -> saveToFile());
         exitBtn.addActionListener(e -> exitApp());
 
         setVisible(true);
     }
-
-    // ================= LOGIC =================
 
     private void addStudent() {
         String name = nameField.getText().trim();
@@ -122,28 +114,25 @@ public class MainGUI extends JFrame {
             return;
         }
 
-        boolean nameIsLetters = name.matches("[a-zA-Z ]+");
-        boolean sectionIsNumbers = sectionStr.matches("\\d+");
-
-        // Check for swapped input
-        if (!nameIsLetters && sectionIsNumbers) {
-            JOptionPane.showMessageDialog(this, "Name contains invalid characters. Please enter letters only.");
+        if (!name.matches("[a-zA-Z ]+")) {
+            JOptionPane.showMessageDialog(this, "Name must contain letters only.");
             return;
         }
 
-        if (nameIsLetters && !sectionIsNumbers) {
-            JOptionPane.showMessageDialog(this, "Section contains invalid characters. Please enter numbers only.");
+        if (!sectionStr.matches("\\d+")) {
+            JOptionPane.showMessageDialog(this, "Section must contain numbers only.");
             return;
         }
 
-        if (!nameIsLetters && !sectionIsNumbers) {
-            JOptionPane.showMessageDialog(this, "Both Name and Section are invalid. Check your input.");
+        int section = Integer.parseInt(sectionStr);
+
+        if (section < 1 || section > 6) {
+            JOptionPane.showMessageDialog(this, "Section must be between 1 and 6 only.");
             return;
         }
 
-        
         if (!controller.addStudent(name, sectionStr)) {
-            JOptionPane.showMessageDialog(this, "Student already exists or invalid input!");
+            JOptionPane.showMessageDialog(this, "Student already exists!");
             return;
         }
 
@@ -153,7 +142,13 @@ public class MainGUI extends JFrame {
     }
 
     private void recordAttendance(int type) {
-        Student s = controller.findStudent(nameField.getText().trim());
+        String studentName = nameField.getText().trim();
+        if (studentName.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please enter student name.");
+            return;
+        }
+
+        Student s = controller.findStudent(studentName);
         if (s == null) {
             JOptionPane.showMessageDialog(this, "Student not found!");
             return;
@@ -165,7 +160,13 @@ public class MainGUI extends JFrame {
     }
 
     private void addScore() {
-        Student s = controller.findStudent(nameField.getText().trim());
+        String studentName = nameField.getText().trim();
+        if (studentName.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please enter student name.");
+            return;
+        }
+
+        Student s = controller.findStudent(studentName);
         if (s == null) {
             JOptionPane.showMessageDialog(this, "Student not found!");
             return;
@@ -182,19 +183,16 @@ public class MainGUI extends JFrame {
             return;
         }
 
-        try {
-            double score = Double.parseDouble(scoreText);
-            if (score < 0 || score > 100) {
-                JOptionPane.showMessageDialog(this, "Score must be between 0 and 100.");
-                return;
-            }
-            String subject = (String) subjectBox.getSelectedItem();
-            s.addScore(subject, score);
-            updateDisplay(s);
-            if (tablePane.isVisible()) refreshTable();
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Invalid score!");
+        double score = Double.parseDouble(scoreText);
+        if (score < 0 || score > 100) {
+            JOptionPane.showMessageDialog(this, "Score must be between 0 and 100.");
+            return;
         }
+
+        String subject = (String) subjectBox.getSelectedItem();
+        s.addScore(subject, score);
+        updateDisplay(s);
+        if (tablePane.isVisible()) refreshTable();
     }
 
     private void updateDisplay(Student s) {
@@ -217,8 +215,8 @@ public class MainGUI extends JFrame {
             tablePane.setVisible(false);
             viewBtn.setText("View All Students");
         }
-        this.revalidate();
-        this.repaint();
+        revalidate();
+        repaint();
     }
 
     private void refreshTable() {
@@ -231,40 +229,68 @@ public class MainGUI extends JFrame {
                     s.getLate(),
                     s.getAbsent(),
                     String.format("%.2f%%", s.getAttendanceRate()),
+                    String.format("%.2f", s.getSubjectAverage("Math")),
+                    String.format("%.2f", s.getSubjectAverage("Science")),
+                    String.format("%.2f", s.getSubjectAverage("English")),
                     String.format("%.2f", s.getOverallAverage())
             });
         }
     }
 
-    private void exitApp() {
-        int confirm = JOptionPane.showConfirmDialog(
-                this,
-                "Exit program?",
-                "Confirm Exit",
-                JOptionPane.YES_NO_OPTION
+    private void saveToFile() {
+    try {
+        java.io.BufferedWriter writer = new java.io.BufferedWriter(
+            new java.io.FileWriter("students.txt")
         );
+
+        writer.write("============================================\n");
+        writer.write("      STUDENT ClASS RECORD\n");
+        writer.write("============================================\n\n");
+
+        for (Student s : controller.getAllStudents()) {
+
+            writer.write("Name       : " + s.getName() + "\n");
+            writer.write("Section    : " + s.getSection() + "\n");
+            writer.write("Present    : " + s.getPresent() + "\n");
+            writer.write("Late       : " + s.getLate() + "\n");
+            writer.write("Absent     : " + s.getAbsent() + "\n");
+            writer.write("Attendance : " + String.format("%.2f%%", s.getAttendanceRate()) + "\n\n");
+
+            writer.write("Grades:\n");
+            writer.write("  Math     : " + String.format("%.2f", s.getSubjectAverage("Math")) + "\n");
+            writer.write("  Science  : " + String.format("%.2f", s.getSubjectAverage("Science")) + "\n");
+            writer.write("  English  : " + String.format("%.2f", s.getSubjectAverage("English")) + "\n\n");
+
+            writer.write("Overall Score Average : " + String.format("%.2f", s.getOverallAverage()) + "\n");
+            writer.write("--------------------------------------------\n\n");
+        }
+
+        writer.close();
+        JOptionPane.showMessageDialog(this, "Records saved successfully!");
+
+    } catch (Exception e) {
+        JOptionPane.showMessageDialog(this, "Error saving file!");
+    }
+}
+
+    private void exitApp() {
+        int confirm = JOptionPane.showConfirmDialog(this,"Exit program?","Confirm Exit",JOptionPane.YES_NO_OPTION);
         if (confirm == JOptionPane.YES_OPTION) System.exit(0);
     }
 
-    // ================= STUDENT CONTROLLER =================
-
     private static class StudentController {
-
         private java.util.List<Student> students = new java.util.ArrayList<>();
 
         public boolean addStudent(String name, String sectionStr) {
             int section;
-
             try {
                 section = Integer.parseInt(sectionStr);
-            } catch (NumberFormatException e) {
+            } catch (Exception e) {
                 return false;
             }
 
             for (Student s : students) {
-                if (s.getName().equalsIgnoreCase(name)) {
-                    return false;
-                }
+                if (s.getName().equalsIgnoreCase(name)) return false;
             }
 
             students.add(new Student(name, section));
@@ -273,9 +299,7 @@ public class MainGUI extends JFrame {
 
         public Student findStudent(String name) {
             for (Student s : students) {
-                if (s.getName().equalsIgnoreCase(name)) {
-                    return s;
-                }
+                if (s.getName().equalsIgnoreCase(name)) return s;
             }
             return null;
         }
