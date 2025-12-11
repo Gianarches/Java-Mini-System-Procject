@@ -4,6 +4,10 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 
+/**
+ * GUI layer only — uses StudentController and AttendanceManager.
+ * Layout and behavior kept the same as your original GUI.
+ */
 public class MainGUI extends JFrame {
 
     private final StudentController controller = new StudentController();
@@ -11,7 +15,7 @@ public class MainGUI extends JFrame {
     private final JTextField nameField = new JTextField();
     private final JTextField sectionField = new JTextField();
     private final JTextField scoreField = new JTextField();
-    private final JComboBox<String> subjectBox = new JComboBox<>(Student.SUBJECTS);
+    private final JComboBox<String> subjectBox;
 
     private final JLabel attendanceLabel = new JLabel("0%");
     private final JLabel averageLabel = new JLabel("0");
@@ -30,6 +34,7 @@ public class MainGUI extends JFrame {
     private final JButton exitBtn = new JButton("Exit");
 
     public MainGUI() {
+        this.subjectBox = new JComboBox<>(Student.subjects);
         setTitle("Student Attendance & Grade System");
         setSize(950, 500);
         setLocationRelativeTo(null);
@@ -131,7 +136,7 @@ public class MainGUI extends JFrame {
             return;
         }
 
-        if (!controller.addStudent(name, sectionStr)) {
+        if (!controller.addStudent(name, section)) {
             JOptionPane.showMessageDialog(this, "Student already exists!");
             return;
         }
@@ -238,78 +243,43 @@ public class MainGUI extends JFrame {
     }
 
     private void saveToFile() {
-    try {
-        java.io.BufferedWriter writer = new java.io.BufferedWriter(
-            new java.io.FileWriter("students.txt")
-        );
+        try (java.io.BufferedWriter writer = new java.io.BufferedWriter(
+                new java.io.FileWriter("students.txt")
+        )) {
+            writer.write("============================================\n");
+            writer.write("      STUDENT CLASS RECORD\n");
+            writer.write("============================================\n\n");
 
-        writer.write("============================================\n");
-        writer.write("      STUDENT ClASS RECORD\n");
-        writer.write("============================================\n\n");
+            for (Student s : controller.getAllStudents()) {
+                writer.write("Name       : " + s.getName() + "\n");
+                writer.write("Section    : " + s.getSection() + "\n");
+                writer.write("Present    : " + s.getPresent() + "\n");
+                writer.write("Late       : " + s.getLate() + "\n");
+                writer.write("Absent     : " + s.getAbsent() + "\n");
+                writer.write("Attendance : " + String.format("%.2f%%", s.getAttendanceRate()) + "\n\n");
 
-        for (Student s : controller.getAllStudents()) {
+                writer.write("Grades:\n");
+                writer.write("  Math     : " + String.format("%.2f", s.getSubjectAverage("Math")) + "\n");
+                writer.write("  Science  : " + String.format("%.2f", s.getSubjectAverage("Science")) + "\n");
+                writer.write("  English  : " + String.format("%.2f", s.getSubjectAverage("English")) + "\n\n");
 
-            writer.write("Name       : " + s.getName() + "\n");
-            writer.write("Section    : " + s.getSection() + "\n");
-            writer.write("Present    : " + s.getPresent() + "\n");
-            writer.write("Late       : " + s.getLate() + "\n");
-            writer.write("Absent     : " + s.getAbsent() + "\n");
-            writer.write("Attendance : " + String.format("%.2f%%", s.getAttendanceRate()) + "\n\n");
+                writer.write("Overall Score Average : " + String.format("%.2f", s.getOverallAverage()) + "\n");
+                writer.write("--------------------------------------------\n\n");
+            }
 
-            writer.write("Grades:\n");
-            writer.write("  Math     : " + String.format("%.2f", s.getSubjectAverage("Math")) + "\n");
-            writer.write("  Science  : " + String.format("%.2f", s.getSubjectAverage("Science")) + "\n");
-            writer.write("  English  : " + String.format("%.2f", s.getSubjectAverage("English")) + "\n\n");
-
-            writer.write("Overall Score Average : " + String.format("%.2f", s.getOverallAverage()) + "\n");
-            writer.write("--------------------------------------------\n\n");
+            JOptionPane.showMessageDialog(this, "Records saved successfully!");
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Error saving file!");
         }
-
-        writer.close();
-        JOptionPane.showMessageDialog(this, "Records saved successfully!");
-
-    } catch (Exception e) {
-        JOptionPane.showMessageDialog(this, "Error saving file!");
     }
-}
 
     private void exitApp() {
         int confirm = JOptionPane.showConfirmDialog(this,"Exit program?","Confirm Exit",JOptionPane.YES_NO_OPTION);
         if (confirm == JOptionPane.YES_OPTION) System.exit(0);
     }
 
-    private static class StudentController {
-        private java.util.List<Student> students = new java.util.ArrayList<>();
-
-        public boolean addStudent(String name, String sectionStr) {
-            int section;
-            try {
-                section = Integer.parseInt(sectionStr);
-            } catch (Exception e) {
-                return false;
-            }
-
-            for (Student s : students) {
-                if (s.getName().equalsIgnoreCase(name)) return false;
-            }
-
-            students.add(new Student(name, section));
-            return true;
-        }
-
-        public Student findStudent(String name) {
-            for (Student s : students) {
-                if (s.getName().equalsIgnoreCase(name)) return s;
-            }
-            return null;
-        }
-
-        public java.util.List<Student> getAllStudents() {
-            return students;
-        }
-    }
-
     public static void main(String[] args) {
-        new MainGUI();
+        // Swing best-practice: create UI on Event Dispatch Thread
+        SwingUtilities.invokeLater(MainGUI::new);
     }
 }
