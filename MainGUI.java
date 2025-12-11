@@ -4,26 +4,29 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 
-/**
- * GUI layer only — uses StudentController and AttendanceManager.
- * Layout and behavior kept the same as your original GUI.
- */
 public class MainGUI extends JFrame {
 
+    // Controller (students storage)
     private final StudentController controller = new StudentController();
 
+    // Input fields
     private final JTextField nameField = new JTextField();
     private final JTextField sectionField = new JTextField();
     private final JTextField scoreField = new JTextField();
+
+    // Subject dropdown
     private final JComboBox<String> subjectBox;
 
+    // Display labels
     private final JLabel attendanceLabel = new JLabel("0%");
     private final JLabel averageLabel = new JLabel("0");
 
+    // Table components
     private JTable table;
     private DefaultTableModel model;
     private JScrollPane tablePane;
 
+    // Buttons
     private final JButton addBtn = new JButton("Add Student");
     private final JButton presentBtn = new JButton("Present");
     private final JButton lateBtn = new JButton("Late");
@@ -33,14 +36,23 @@ public class MainGUI extends JFrame {
     private final JButton saveBtn = new JButton("Save Records");
     private final JButton exitBtn = new JButton("Exit");
 
+    // ===============================
+    // GUI CONSTRUCTOR
+    // ===============================
+
     public MainGUI() {
+
+        // Prepare subject dropdown
         this.subjectBox = new JComboBox<>(Student.subjects);
+
+        // Window setup
         setTitle("Student Attendance & Grade System");
         setSize(950, 500);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
 
+        // Title bar
         JLabel title = new JLabel("STUDENT ATTENDANCE AND GRADE SYSTEM", JLabel.CENTER);
         title.setFont(new Font("Arial", Font.BOLD, 18));
         title.setOpaque(true);
@@ -49,24 +61,31 @@ public class MainGUI extends JFrame {
         title.setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
         add(title, BorderLayout.NORTH);
 
+        // Left input panel
         JPanel left = new JPanel(new GridLayout(8, 2, 10, 10));
         left.setBorder(BorderFactory.createEmptyBorder(20,20,20,10));
 
         left.add(new JLabel("Student Name:"));
         left.add(nameField);
+
         left.add(new JLabel("Section:"));
         left.add(sectionField);
+
         left.add(new JLabel("Subject:"));
         left.add(subjectBox);
+
         left.add(new JLabel("Score:"));
         left.add(scoreField);
+
         left.add(new JLabel("Attendance Rate:"));
         left.add(attendanceLabel);
+
         left.add(new JLabel("Average Grade:"));
         left.add(averageLabel);
 
         add(left, BorderLayout.WEST);
 
+        // Table setup (hidden at first)
         model = new DefaultTableModel(new String[]{
                 "Name", "Section", "Present", "Late", "Absent",
                 "Attendance %",
@@ -79,6 +98,7 @@ public class MainGUI extends JFrame {
         tablePane.setVisible(false);
         add(tablePane, BorderLayout.CENTER);
 
+        // Button panel
         JPanel buttons = new JPanel(new GridLayout(2, 5, 10, 10));
         buttons.setBorder(BorderFactory.createEmptyBorder(10,20,20,20));
 
@@ -93,6 +113,7 @@ public class MainGUI extends JFrame {
 
         add(buttons, BorderLayout.SOUTH);
 
+        // Button actions
         addBtn.addActionListener(e -> addStudent());
         presentBtn.addActionListener(e -> recordAttendance(1));
         lateBtn.addActionListener(e -> recordAttendance(2));
@@ -105,25 +126,30 @@ public class MainGUI extends JFrame {
         setVisible(true);
     }
 
+    // ===============================
+    // ADD STUDENT LOGIC
+    // ===============================
     private void addStudent() {
         String name = nameField.getText().trim();
         String sectionStr = sectionField.getText().trim();
 
+        // Basic validation
         if (name.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Please enter name.");
             return;
         }
-
         if (sectionStr.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Please enter section.");
             return;
         }
 
+        // Name must be letters only
         if (!name.matches("[a-zA-Z ]+")) {
             JOptionPane.showMessageDialog(this, "Name must contain letters only.");
             return;
         }
 
+        // Section must be numbers only
         if (!sectionStr.matches("\\d+")) {
             JOptionPane.showMessageDialog(this, "Section must contain numbers only.");
             return;
@@ -131,11 +157,13 @@ public class MainGUI extends JFrame {
 
         int section = Integer.parseInt(sectionStr);
 
+        // Section must be between 1 and 6
         if (section < 1 || section > 6) {
             JOptionPane.showMessageDialog(this, "Section must be between 1 and 6 only.");
             return;
         }
 
+        // Controller adds student
         if (!controller.addStudent(name, section)) {
             JOptionPane.showMessageDialog(this, "Student already exists!");
             return;
@@ -143,11 +171,17 @@ public class MainGUI extends JFrame {
 
         JOptionPane.showMessageDialog(this, "Student added!");
         clearFields();
+
         if (tablePane.isVisible()) refreshTable();
     }
 
+    // ===============================
+    // ATTENDANCE BUTTON ACTIONS
+    // ===============================
+
     private void recordAttendance(int type) {
         String studentName = nameField.getText().trim();
+
         if (studentName.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Please enter student name.");
             return;
@@ -161,8 +195,13 @@ public class MainGUI extends JFrame {
 
         AttendanceManager.record(s, type);
         updateDisplay(s);
+
         if (tablePane.isVisible()) refreshTable();
     }
+
+    // ===============================
+    // ADD SCORE
+    // ===============================
 
     private void addScore() {
         String studentName = nameField.getText().trim();
@@ -183,33 +222,47 @@ public class MainGUI extends JFrame {
             return;
         }
 
+        // Score must be a number
         if (!scoreText.matches("\\d{1,3}(\\.\\d+)?")) {
             JOptionPane.showMessageDialog(this, "Numbers Only!");
             return;
         }
 
         double score = Double.parseDouble(scoreText);
+
+        // Score must be between 0–100
         if (score < 0 || score > 100) {
             JOptionPane.showMessageDialog(this, "Score must be between 0 and 100.");
             return;
         }
 
+        // Add score to student
         String subject = (String) subjectBox.getSelectedItem();
         s.addScore(subject, score);
+
         updateDisplay(s);
         if (tablePane.isVisible()) refreshTable();
     }
+
+    // ===============================
+    // UPDATE DISPLAY LABELS
+    // ===============================
 
     private void updateDisplay(Student s) {
         attendanceLabel.setText(String.format("%.2f%%", s.getAttendanceRate()));
         averageLabel.setText(String.format("%.2f", s.getOverallAverage()));
     }
 
+    // Clears all text fields
     private void clearFields() {
         nameField.setText("");
         sectionField.setText("");
         scoreField.setText("");
     }
+
+    // ===============================
+    // TABLE FUNCTIONS
+    // ===============================
 
     private void toggleTable() {
         if (!tablePane.isVisible()) {
@@ -226,6 +279,7 @@ public class MainGUI extends JFrame {
 
     private void refreshTable() {
         model.setRowCount(0);
+
         for (Student s : controller.getAllStudents()) {
             model.addRow(new Object[]{
                     s.getName(),
@@ -242,14 +296,20 @@ public class MainGUI extends JFrame {
         }
     }
 
+    // ===============================
+    // SAVE RECORDS TO TEXT FILE
+    // ===============================
+
     private void saveToFile() {
         try (java.io.BufferedWriter writer = new java.io.BufferedWriter(
                 new java.io.FileWriter("students.txt")
         )) {
+
             writer.write("============================================\n");
             writer.write("      STUDENT CLASS RECORD\n");
             writer.write("============================================\n\n");
 
+            // Write each student data
             for (Student s : controller.getAllStudents()) {
                 writer.write("Name       : " + s.getName() + "\n");
                 writer.write("Section    : " + s.getSection() + "\n");
@@ -268,18 +328,34 @@ public class MainGUI extends JFrame {
             }
 
             JOptionPane.showMessageDialog(this, "Records saved successfully!");
+
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Error saving file!");
         }
     }
 
+    // ===============================
+    // EXIT APPLICATION
+    // ===============================
+
     private void exitApp() {
-        int confirm = JOptionPane.showConfirmDialog(this,"Exit program?","Confirm Exit",JOptionPane.YES_NO_OPTION);
-        if (confirm == JOptionPane.YES_OPTION) System.exit(0);
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Exit program?",
+                "Confirm Exit",
+                JOptionPane.YES_NO_OPTION
+        );
+
+        if (confirm == JOptionPane.YES_OPTION)
+            System.exit(0);
     }
 
+    // ===============================
+    // MAIN METHOD
+    // ===============================
+
     public static void main(String[] args) {
-        // Swing best-practice: create UI on Event Dispatch Thread
+        // Start GUI on Swing event thread
         SwingUtilities.invokeLater(MainGUI::new);
     }
 }
