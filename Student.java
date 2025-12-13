@@ -33,19 +33,17 @@ public class Student {
         }
     }
 
-    // ===============================
+    
     // Getters
-    // ===============================
-
     public String getName() { return name; }
     public int getSection() { return section; }
     public int getPresent() { return present; }
     public int getLate() { return late; }
     public int getAbsent() { return absent; }
 
-    // ===============================
+    
     // Attendance Computation
-    // ===============================
+   
 
     // Computes attendance percentage based on: Present / (Present + Late + Absent)
     public double getAttendanceRate() {
@@ -54,10 +52,9 @@ public class Student {
         return (present * 100.0) / total;
     }
 
-    // ===============================
+    
     // Score Handling
-    // ===============================
-
+  
     // Adds a score to the given subject
     public void addScore(String subject, double score) {
         int index = getSubjectIndex(subject);
@@ -101,10 +98,9 @@ public class Student {
         return -1; // Not found
     }
 
-    // ===============================
+   
     // Attendance Updates
-    // ===============================
-
+   
     public void markPresent() { present++; }
     public void markLate() { late++; }
     public void markAbsent() { absent++; }
